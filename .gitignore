@@ -1,5 +1,7 @@
 __pycache__
+.vscode
 
+/venv
 /data
 /solutions/adventure
 /NOTES.md

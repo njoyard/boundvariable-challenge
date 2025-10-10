@@ -17,7 +17,7 @@ Whenever the program prompts for input you can use a machine command instead. Ma
 * `.help` shows available commands
 * `.halt` halts the machine
 * `.bin <file>` starts dumping any machine output as binary to `<file>`. You will no longer see any output on the terminal, and the program still expects input after that. Hopefully the machine halts by itself at some point, otherwise you're stuck not seeing what the program wants from you...
-* `.save <file>` saves the current state of the machine to `<file>`. Save format is described in `UM.save_state.__doc__`. 
+* `.save <file>` saves the current state of the machine to `<file>`. Save format is described in `UM.cmd_save.__doc__`. 
 * `.load <file>` loads saved state from `<file>` and resumes execution at the last Input operation that allowed you to type the `.save` command in the first place. You can also directly run the UM from saved state: `python ./um.py load <file>`
 * `.slv <name>` runs a solver. Solvers interact automatically with the IO of the machine to perform various tasks, until they're done and return input control to the user. Use `.slv` to list available solvers.
 

@@ -43,20 +43,36 @@ def op(code, name, fmt, *args):
     return decorator
 
 
+def cmd(name, syn=None):
+    def decorator(func):
+        func.cmdname = name
+        func.syn = syn or f".{name}"
+        return func
+
+    return decorator
+
+
 class UM:
     def __init__(self):
         self.ops = {}
+        self.cmds = {}
         self.halted = True
         self.output_file = None
 
         for f in [getattr(self, k) for k in dir(self)]:
-            if hasattr(f, "__func__") and hasattr(f.__func__, "opcode"):
-                self.ops[getattr(f.__func__, "opcode")] = (
-                    getattr(f.__func__, "name"),
-                    getattr(f.__func__, "args"),
-                    getattr(f.__func__, "fmt"),
-                    f,
-                )
+            if hasattr(f, "__func__"):
+                if hasattr(f.__func__, "opcode"):
+                    self.ops[getattr(f.__func__, "opcode")] = (
+                        getattr(f.__func__, "name"),
+                        getattr(f.__func__, "args"),
+                        getattr(f.__func__, "fmt"),
+                        f,
+                    )
+                if hasattr(f.__func__, "cmdname"):
+                    self.cmds[getattr(f.__func__, "cmdname")] = (
+                        getattr(f.__func__, "syn"),
+                        f,
+                    )
 
     def load(self, filename):
         size = os.path.getsize(filename)
@@ -224,70 +240,64 @@ class UM:
         self.input += [ord(c) for c in cmd] + [10]
 
     def handle_command(self, cmd):
-        if cmd in (".h", ".help"):
-            print("Available commands:")
-            print(".h, .help    show this help")
-            print(".halt        halt the machine")
-            print(".save [name] save state into <name> (defaults to 'state.ums')")
-            print(".load [name] load state from <name> (defaults to 'state.ums')")
-            print(".reg         show register values")
-            print(".arr         show allocated array sizes")
-            print(
-                ".bin [name]  start saving binary machine output to <name>, and hope it halts at some point"
-            )
-            print(
-                ".slv <s> [p] run solver <s> with optional parameter, or list solvers if no name given"
-            )
-        elif cmd == ".halt":
-            self.halted = True
-            return True
-        elif cmd.startswith(".save"):
-            if " " in cmd:
-                _, savename = cmd.split(" ")
-            else:
-                savename = "state.ums"
-            self.save_state(savename)
-        elif cmd.startswith(".load"):
-            if " " in cmd:
-                _, savename = cmd.split(" ")
-            else:
-                savename = "state.ums"
-            self.load_state(savename)
-            return True
-        elif cmd == ".reg":
-            print(
-                f"< finger=0x{self.finger:08x} "
-                + " ".join(f"r{i}=0x{self.regs[i]:08x}" for i in range(8))
-            )
-        elif cmd == ".arr":
-            print(f"< {len(self.arrays)} allocated arrays")
-            for k, v in self.arrays.items():
-                print(f"< {k:08x}: {len(v)} entries")
-        elif cmd.startswith(".bin "):
-            self.output_file = open(cmd[5:], mode="wb")
-            print(f"< now saving machine output to {cmd[5:]}")
-        elif cmd.startswith(".slv"):
-            if cmd == ".slv":
-                print("< available solvers:")
-                for k, v in SOLVERS.items():
-                    print(f"<   {k}: {v.__doc__.strip() if v.__doc__ else ''}")
-            else:
-                _, name, *rest = cmd.split(" ")
-                try:
-                    SolverKlass = SOLVERS[name]
-                except KeyError:
-                    print(f"< unknown solver: {name}, try '.slv'")
-                    return
-
-                self.solver = SolverKlass(lambda msg: print(f"< solver[{name}]: {msg}"))
-                self.solver_output = " ".join(rest) if rest else ""
-        elif cmd.startswith("."):
-            print(f"< unrecognized command: {cmd}, try '.help'")
+        if cmd.startswith("."):
+            name, *args = cmd[1:].split(" ")
+            if name not in self.cmds:
+                print(f"< unknown command: {cmd}")
+                name = "help"
+                args = []
+            _, func = self.cmds[name]
+            if func(*args):
+                return
         else:
             self.add_input(cmd)
 
-    def save_state(self, name):
+    @cmd("help")
+    def cmd_help(self):
         """
+        display available commands
+        """
+
+        print("< available commands:")
+        length = max(len(syn) for syn, f in self.cmds.values())
+
+        for name, (syn, f) in self.cmds.items():
+            print(
+                f"< {syn:{length}s} {f.__doc__.strip().splitlines()[0] if f.__doc__ else '?'}"
+            )
+
+    @cmd("halt")
+    def cmd_halt(self):
+        """
+        halt the machine
+        """
+        self.halted = True
+        return True
+
+    @cmd("reg")
+    def cmd_reg(self):
+        """
+        show registers and finger
+        """
+        print(
+            f"< finger=0x{self.finger:08x} "
+            + " ".join(f"r{i}=0x{self.regs[i]:08x}" for i in range(8))
+        )
+
+    @cmd("arr")
+    def cmd_arr(self):
+        """
+        show array sizes
+        """
+        print(f"< {len(self.arrays)} allocated arrays")
+        for k, v in self.arrays.items():
+            print(f"< {k:08x}: {len(v)} entries")
+
+    @cmd("save", ".save [file]")
+    def cmd_save(self, name="state.ums"):
+        """
+        save the current state in <file> (defaults to 'state.ums')
+
         The save format is a binary file with the following items, in order,
         all stored as 4-byte big-endian unsigned integers, unless otherwise
         specified.
@@ -345,7 +355,11 @@ class UM:
 
         print(f"{ERASE}< saved state to {name}")
 
-    def load_state(self, name):
+    @cmd("load", ".load [file]")
+    def cmd_load(self, name="state.ums"):
+        """
+        load saved state from <file> (defaults to 'state.ums') and resume execution
+        """
         self.halted = False
         self.input = []
         self.last_output = ""
@@ -395,6 +409,37 @@ class UM:
         if self.last_output:
             print(self.last_output)
 
+        return True
+
+    @cmd("bin", ".bin [file]")
+    def cmd_bin(self, file="dump.um"):
+        """
+        start writing binary machine output to <file> (default: 'dump.um'); cannot be stopped
+        """
+        self.output_file = open(file, mode="wb")
+        print(f"< now saving machine output to {file}")
+
+    @cmd("slv", ".slv [name [args...]]")
+    def cmd_slv(self, *args):
+        """
+        run solver <name> with optional <args>; omit <name> to list available solvers
+        """
+
+        if not args:
+            print("< available solvers:")
+            for k, v in SOLVERS.items():
+                print(f"<   {k}: {v.__doc__.strip() if v.__doc__ else ''}")
+        else:
+            name, *rest = args
+            try:
+                SolverKlass = SOLVERS[name]
+            except KeyError:
+                print(f"< unknown solver: {name}, try '.slv' to list them")
+                return
+
+            self.solver = SolverKlass(lambda msg: print(f"< solver[{name}]: {msg}"))
+            self.solver_output = " ".join(rest) if rest else ""
+
 
 def usage():
     print("Usage: um.py [command]")
@@ -421,7 +466,7 @@ if __name__ == "__main__":
     if cmd in ("run", "asm"):
         machine.load(sys.argv[2])
     elif cmd == "load":
-        machine.load_state(sys.argv[2])
+        machine.cmd_load(sys.argv[2])
 
     if cmd in ("run", "load"):
         try:
