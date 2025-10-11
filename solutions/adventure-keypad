@@ -1,0 +1,27 @@
+take bolt
+take spring
+incinerate spring
+take button
+take processor
+take red pill
+incinerate red pill
+take radio
+take cache
+take blue transistor
+combine radio with blue transistor
+combine processor with cache
+take antenna
+incinerate antenna
+take screw
+take motherboard
+combine motherboard with screw
+take A-1920-IXB
+combine A-1920-IXB with processor
+combine A-1920-IXB with bolt
+combine A-1920-IXB with radio
+take red transistor
+take keypad
+combine A-1920-IXB with red transistor
+combine keypad with button
+combine motherboard with A-1920-IXB
+combine keypad with motherboard

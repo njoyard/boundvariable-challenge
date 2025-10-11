@@ -4,6 +4,7 @@ __pycache__
 /venv
 /data
 /solutions/adventure
+/solutions/*.pickle
 /NOTES.md
 
 *.um

@@ -7,10 +7,11 @@ import struct
 from itertools import takewhile
 import gzip
 
-from solvers.adventure import AdventureCombineItemsSolver
+from solvers.qbasic import QBasicSolver
+from solvers.adventure import AdventureSolver
 
 
-SOLVERS = {"adv": AdventureCombineItemsSolver}
+SOLVERS = {"adv": AdventureSolver, "bas": QBasicSolver}
 
 ERASE = "\x1b[F\x1b[K"
 
@@ -50,6 +51,10 @@ def cmd(name, syn=None):
         return func
 
     return decorator
+
+
+class Halt(Exception):
+    pass
 
 
 class UM:
@@ -114,10 +119,10 @@ class UM:
             try:
                 func(*params)
             except Exception as e:
-                e.add_note(f"Executing {name} {' '.join(map(str, params))} at {finger}")
+                e.add_note(f"executing {name} {' '.join(map(str, params))} at {finger}")
                 raise
 
-        raise Exception("Machine halted")
+        raise Halt()
 
     @op(0, "cmov", "{0} = {1} if {2}", A, B, C)
     def op_cmove(self, a, b, c):
@@ -427,8 +432,17 @@ class UM:
 
         if not args:
             print("< available solvers:")
+            indent = max(len(k) for k in SOLVERS.keys())
+
             for k, v in SOLVERS.items():
-                print(f"<   {k}: {v.__doc__.strip() if v.__doc__ else ''}")
+                if v.__doc__:
+                    for i, l in enumerate(v.__doc__.strip().splitlines()):
+                        print(
+                            f"<   {k if i == 0 else '':{indent}s}{':' if i==0 else ' '} {l}"
+                        )
+                else:
+                    print(f"<   {k:{indent}s}: undocumented")
+
         else:
             name, *rest = args
             try:
@@ -471,8 +485,8 @@ if __name__ == "__main__":
     if cmd in ("run", "load"):
         try:
             machine.run()
-        except Exception as e:
-            print(e)
+        except Halt:
+            print("Machine halted")
     elif cmd == "asm":
         machine.disassemble()
     else:
