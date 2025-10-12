@@ -8,6 +8,7 @@ CHICAGO_STREETS_X = ["Ridgewood", "Dorchester", "Blackstone", "Harper"]
 CHICAGO_STREETS_Y = ["52nd Street", "53th Street", "54th Street", "54th Place"]
 CHICAGO_EXCLUDE = {(0, 0), (0, 1), (0, 3)}
 DIRS = {(-1, 0): "west", (1, 0): "east", (0, 1): "south", (0, -1): "north"}
+MAX_INV = 6
 
 
 def parse_position(output):
@@ -133,7 +134,6 @@ def parse_look(output):
 
     stack = []
     broken = set()
-    more = False
 
     # Join lines
     output = " ".join(output.strip().splitlines())
@@ -152,10 +152,8 @@ def parse_look(output):
                 item = item.replace(BROKEN, "")
                 broken.add(item)
             stack = [item, *stack]
-        if "There are more items" in l:
-            more = True
 
-    return stack, broken, more
+    return stack, broken
 
 
 def parse_look_item(item, output):
@@ -180,7 +178,7 @@ def parse_look_item(item, output):
     return parse_item(descr)[1]
 
 
-def solve(target, stack, broken_descs, print, write_commands_to=None):
+def solve(target, stack, broken_descs, print, max_inv=MAX_INV, write_commands_to=None):
     """
     Generate commands to get a fixed <target> item, with items
     available on the floor in <stack> and <broken_descs> listing
@@ -192,7 +190,6 @@ def solve(target, stack, broken_descs, print, write_commands_to=None):
     # for k, v in broken_descs.items():
     #     print(f"(broken) {k}: {v}")
 
-    MAX_INV = 6
     RE_QUALIFIER = r"^[a-z-]+ "
 
     def unqualified(name):
@@ -233,7 +230,7 @@ def solve(target, stack, broken_descs, print, write_commands_to=None):
         initial = len(commands)
 
         # Pick up as many items as we can
-        while stack and len(inv) < MAX_INV:
+        while stack and len(inv) < max_inv:
             item = stack.pop()
             inv.add(item)
             commands.append(f"take {item}")
@@ -280,25 +277,25 @@ ST_LOOKING_BROKEN = 2
 ST_SEND_COMMANDS = 3
 ST_INCINERATE = 4
 ST_MOVE = 5
+ST_FINISHED = 99
 
 
-class AdventureKeypadSolver:
-    COMMANDS_FILE = "solutions/adventure-keypad"
-
-    def __init__(self, printmsg):
+class AdventureRepairSolver:
+    def __init__(self, printmsg, target="keypad"):
         self.state = ST_INIT
         self.print = printmsg
         self.broken_descs = {}
         self.looking_at = None
-        self.target = "keypad"
+        self.target = target
+        self.cmds_file = f"solutions/adventure-{target}"
 
     def handle_output(self, output):
         if self.state == ST_INIT:
             self.state = ST_FETCHING_ITEMS
-            return "look"
+            return "switch goggles Reading\nlook"
 
         if self.state == ST_FETCHING_ITEMS:
-            self.stack, self.broken, _ = parse_look(output)
+            self.stack, self.broken = parse_look(output)
             self.state = ST_LOOKING_BROKEN
 
         if self.state == ST_LOOKING_BROKEN:
@@ -318,17 +315,19 @@ class AdventureKeypadSolver:
                 self.stack,
                 self.broken_descs,
                 self.print,
-                self.COMMANDS_FILE,
+                write_commands_to=self.cmds_file,
             )
             self.state = ST_SEND_COMMANDS
 
         if self.state == ST_SEND_COMMANDS:
+            self.state = ST_FINISHED
             if self.commands:
                 return "\n".join(self.commands)
 
 
 class AdventureChicagoSolver:
-    DATAFILE = "solutions/chicago.pickle"
+    DATAFILE = "solutions/adventure-chicago.pickle"
+    OUTFILE = "solutions/adventure-chicago"
 
     stacks = defaultdict(lambda: [])
     broken_descs = {}
@@ -353,18 +352,18 @@ class AdventureChicagoSolver:
 
     def handle_output(self, output):
         if self.know_items:
-            return self.handle_output_know(self, output)
+            return self.handle_output_know(output)
 
         if self.state == ST_INIT:
             self.print("exploring to get all item locations and states")
             self.state = ST_FETCHING_ITEMS
-            return "look"
+            return "switch goggles Reading\nlook"
 
         if self.state == ST_FETCHING_ITEMS:
             if not self.pos:
                 self.pos = parse_position(output)
 
-            self.stack, self.broken, self.more = parse_look(output)
+            self.stack, self.broken = parse_look(output)
             self.stacks[self.pos] = [*self.stack, *self.stacks[self.pos]]
 
             self.state = ST_LOOKING_BROKEN
@@ -380,20 +379,6 @@ class AdventureChicagoSolver:
             if len(missing):
                 self.looking_at = missing[0]
                 return f"look {missing[0]}"
-
-            if self.more:
-                self.state = ST_INCINERATE
-            else:
-                self.state = ST_MOVE
-
-        if self.state == ST_INCINERATE:
-            if self.stack:
-                item, *self.stack = self.stack
-                return f"take {item}\nincinerate {item}"
-
-            if self.more:
-                self.state = ST_FETCHING_ITEMS
-                return "look"
 
             self.state = ST_MOVE
 
@@ -411,7 +396,7 @@ class AdventureChicagoSolver:
                 if not unvisited:
                     AdventureChicagoSolver.know_items = True
                     with open(self.DATAFILE, mode="wb") as f:
-                        pickle.dump((self.stacks, self.broken_descs), f)
+                        pickle.dump((dict(self.stacks), self.broken_descs), f)
                     self.print(f"done visiting, restart game and run solver again")
                     return
 
@@ -443,8 +428,8 @@ class AdventureChicagoSolver:
 class AdventureSolver:
     """
     solver for adventure puzzles, possible parameter values:
-    - 'keypad': repair keypad in entrance junk room
     - 'chicago': solve chicago
+    - item name: repair that item
     """
 
     def __init__(self, printmsg):
@@ -454,12 +439,12 @@ class AdventureSolver:
     def handle_output(self, output):
         if not self.solver:
             match output:
-                case "keypad":
-                    self.solver = AdventureKeypadSolver(self.print)
+                case "":
+                    print("solver needs a parameter")
+                    return
                 case "chicago":
                     self.solver = AdventureChicagoSolver(self.print)
                 case _:
-                    self.print(f"no solver for parameter '{output}'")
-                    return
+                    self.solver = AdventureRepairSolver(self.print, output)
 
         return self.solver.handle_output(output)

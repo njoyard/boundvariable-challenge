@@ -54,5 +54,6 @@ class QBasicSolver:
                 return f"hack2.exe {self.user}"
 
             with open(self.OUT, mode="w") as f:
-                self.print(f"password for {k} is {v}")
-                f.write(f"{k}: {v}\n")
+                for k, v in self.passwords.items():
+                    self.print(f"password for {k} is {v}")
+                    f.write(f"{k}: {v}\n")

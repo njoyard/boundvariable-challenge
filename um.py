@@ -53,7 +53,15 @@ def cmd(name, syn=None):
     return decorator
 
 
-class Halt(Exception):
+class UMException(Exception):
+    pass
+
+
+class UMRuntimeError(UMException):
+    pass
+
+
+class Halt(UMRuntimeError):
     pass
 
 
@@ -80,6 +88,12 @@ class UM:
                     )
 
     def load(self, filename):
+        """
+        Load UM / UMZ binary into array zero.
+        """
+
+        print(f"< loading binary {filename}...")
+
         size = os.path.getsize(filename)
         with open(filename, mode="rb") as f:
             zero = list(struct.unpack(">" + "L" * (size // 4), f.read()))
@@ -96,25 +110,54 @@ class UM:
         self.solver = None
         self.solver_output = ""
 
+        print(f"{ERASE}< decoding array 0...")
+        self.decode()
+
+        print(f"{ERASE}< loaded binary {filename}")
+
+    def decode(self, index=-1):
+        """
+        Pre-decode array zero for faster execution.
+        When called with index, only decode that index. Otherwise, decode the whole array.
+        """
+
+        if index == -1:
+            size = len(self.arrays[0])
+            self.decoded = [None] * size
+            for i in range(size):
+                self.decode(i)
+
+        instr = self.arrays[0][index]
+        name = func = params = err = None
+
+        try:
+            name, args, _, func = self.ops[O(instr)]
+        except KeyError:
+            err = f"Invalid opcode {O(instr)} at {index}"
+
+        if not err:
+            params = [a(instr) for a in args]
+
+        self.decoded[index] = (name, func, params, err)
+
     def run(self):
+        """
+        Run the UM until exception is raised.
+        """
+
         while not self.halted:
             finger = self.finger
 
             try:
-                instr = self.arrays[0][finger]
+                name, func, params, err = self.decoded[finger]
             except IndexError:
                 self.halted = True
-                raise Exception(f"Invalid finger position {finger}")
+                raise UMRuntimeError(f"Invalid finger position {finger}")
 
             self.finger += 1
 
-            try:
-                name, args, _, func = self.ops[O(instr)]
-            except KeyError:
-                self.halted = True
-                raise Exception(f"Invalid opcode {O(instr)} at {finger}")
-
-            params = [a(instr) for a in args]
+            if err:
+                raise UMRuntimeError(err)
 
             try:
                 func(*params)
@@ -135,7 +178,13 @@ class UM:
 
     @op(2, "aamd", "array({0})[{1}] = {2}", A, B, C)
     def op_aamd(self, a, b, c):
-        self.arrays[self.regs[a]][self.regs[b]] = self.regs[c]
+        ary = self.regs[a]
+        idx = self.regs[b]
+
+        self.arrays[ary][idx] = self.regs[c]
+
+        if ary == 0:
+            self.decode(idx)
 
     @op(3, "add", "{0} = {1} + {2}", A, B, C)
     def op_add(self, a, b, c):
@@ -185,7 +234,7 @@ class UM:
 
     @op(11, "in", "in {0}", C)
     def op_in(self, c):
-        while not len(self.input):
+        while not self.input:
             if self.solver:
                 output, self.solver_output = self.solver_output, ""
                 cmd = self.solver.handle_output(output)
@@ -207,10 +256,12 @@ class UM:
     @op(12, "load", "load array({0}).{1}", B, C)
     def op_load(self, b, c):
         if self.regs[b] != 0:
+            # Load
             self.arrays[0] = list(self.arrays[self.regs[b]])
+            self.decode()
             self.finger = self.regs[c]
         else:
-            # Skip copy if we just jump
+            # Jump
             self.finger = self.regs[c]
 
     @op(13, "orth", "{0} = {1}", S, V)
@@ -218,6 +269,10 @@ class UM:
         self.regs[s] = v
 
     def disassemble(self):
+        """
+        Disassemble array zero to stdout.
+        """
+
         def group(s, count, sep=" "):
             return sep.join(s[i : i + count] for i in range(0, len(s), count))
 
@@ -409,6 +464,8 @@ class UM:
             else:
                 load_state(f)
 
+        print(f"{ERASE}< decoding array 0...")
+        self.decode()
         print(f"{ERASE}< loaded state from {name} (v{v})")
 
         if self.last_output:
