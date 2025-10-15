@@ -44,3 +44,16 @@ class Inventory(namedtuple("Inventory", ["items"])):
 
     def matches(self, requirements):
         return all(any(i.matches(r) for i in self.items) for r in requirements)
+
+    def without_trash(self, trash):
+        cur = self
+        trashed = []
+        for i in self.items:
+            if i in trash:
+                trashed.append(i)
+                cur = self.without_item(i)
+
+        if cur == self:
+            raise InvalidState(f"Inventory has no trash items")
+
+        return trashed, cur

@@ -2,10 +2,9 @@ from collections import defaultdict
 import heapq
 import math
 
-ASTAR_COST = 1
-ASTAR_PATHS = 2
+ASTAR_PATHS = 1
+ASTAR_COST = 2
 ASTAR_GOAL = 4
-ASTAR_ALL = ASTAR_COST | ASTAR_PATHS | ASTAR_GOAL
 
 
 def astar(
@@ -14,9 +13,7 @@ def astar(
     neighbours,
     distance,
     heuristic=lambda p: 0,
-    return_path=True,
-    return_cost=True,
-    return_goal=False,
+    ret=ASTAR_COST | ASTAR_PATHS,
 ):
     """
     A-star pathfinding
@@ -40,11 +37,11 @@ def astar(
 
     def build_retval(point):
         output = []
-        if return_path:
+        if ret & ASTAR_PATHS:
             output.append(build_path(point))
-        if return_cost:
+        if ret & ASTAR_COST:
             output.append(costs[point])
-        if return_goal:
+        if ret & ASTAR_GOAL:
             output.append(point)
         return output
 

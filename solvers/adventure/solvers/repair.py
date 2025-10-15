@@ -1,4 +1,5 @@
 from ..analyze import get_result
+from ..entities import GameState, item_from_name
 from ..errors import AdventureError
 from ..explore import MapExplorer
 from ..ml import parse_ml
@@ -14,13 +15,8 @@ ST_FINISHED = 100
 
 class BaseRepairSolver:
     """
-    Base for repair solvers: explore the map, fetch inventory, store data:
-    - self.inv: Inventory
-    - self.pos: Tuple[int, int], current position
-    - self.rooms: Dict[Tuple[int, int], Room]
-    - self.targets: List[str]
-
-    Then call abstract method .solve() that should return a list of commands.
+    Base for repair solvers: explore the map, fetch inventory, then call .solve(state, required)
+    that should return a list of commands.
     """
 
     def __init__(self, printmsg, targets):
@@ -80,7 +76,10 @@ class BaseRepairSolver:
             self.state = ST_FINISHING
             self.print("finished exploring, solving...")
 
-            commands = self.solve()
+            commands = self.solve(
+                GameState(pos=self.pos, inv=self.inv, rooms=tuple(self.rooms.items())),
+                [item_from_name(t) for t in self.targets],
+            )
 
             if commands == None:
                 self.print("no solution found")

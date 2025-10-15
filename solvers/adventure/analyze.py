@@ -1,4 +1,5 @@
 from .entities import room_from_ml, inventory_from_ml, item_from_ml
+from .errors import AdventureError
 
 
 def get_result(ml):

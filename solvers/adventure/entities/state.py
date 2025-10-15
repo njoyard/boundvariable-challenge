@@ -33,6 +33,23 @@ class GameState(
         """
         Generate next possible states, allowing any item in <trash> to be incinerated
         """
+        # Start by destroying all trash items in the inventory
+        if not self.commands:
+            try:
+                trashed, inv = self.inv.without_trash(trash)
+                trash_cmds = [
+                    f"{cmd} {item.full_name}"
+                    for item in trashed
+                    for cmd in ("take", "incinerate")
+                ]
+                yield GameState(
+                    self.pos,
+                    inv,
+                    self.rooms(*self.commands, *trash_cmds),
+                )
+            except InvalidState:
+                pass
+
         just_moved = list(takewhile(lambda c: c in RDIRS, reversed(self.commands)))
         prev_positions = set()
         cur = self.pos
@@ -41,8 +58,6 @@ class GameState(
             dx, dy = RDIRS[INVERSE_DIRS[m]]
             cur = cx + dx, cy + dy
             prev_positions.add(cur)
-
-        # TODO Destroy all trash items in inventory
 
         # Destroy all trash items on top of current room pile
         if self.inv.free_slots:

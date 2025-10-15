@@ -1,4 +1,4 @@
-from ..lib import astar
+from ..lib import astar, ASTAR_GOAL
 
 
 DIRS = {(-1, 0): "west", (1, 0): "east", (0, 1): "south", (0, -1): "north"}
@@ -34,8 +34,10 @@ class MapExplorer:
 
         return {(e - {pos}).pop() for e in self.edges if pos in e}
 
-    def go(self, start, target):
+    def go(self, start, target, as_positions=False):
         if self.dist(start, target) == 1:
+            if as_positions:
+                return [target]
             sx, sy = start
             tx, ty = target
             return [DIRS[(tx - sx, ty - sy)]]
@@ -49,6 +51,10 @@ class MapExplorer:
         )
 
         cur, *path = path
+
+        if as_positions:
+            return path[1:]
+
         cmds = []
         for p in path:
             cx, cy = cur
@@ -63,13 +69,34 @@ class MapExplorer:
         # List all rooms
         rooms = set(r for e in self.edges for r in e)
 
-        # Explore all rooms, choosing the closest unvisited room each time
-        # TODO find an optimal exploration path (avoiding crossing visited rooms)
-        rooms.remove(self.pos)
-        cur = self.pos
-        while rooms:
-            nxt = min(rooms, key=lambda r: self.dist(cur, r))
-            rooms.remove(nxt)
+        def next_paths(p):
+            cur = p[-1]
+            for unvisited in rooms - set(p):
+                yield (*p, *self.go(cur, unvisited, as_positions=True))
+
+        def path_dist(a, b):
+            # b starts with a
+            cur, *path = b[len(a) - 1 :]
+            dist = 0
+            while path:
+                nxt, *path = path
+                dist += self.dist(cur, nxt)
+                cur = nxt
+            return dist
+
+        # Find shortest path in paths space to visit all rooms
+        [path] = astar(
+            (self.pos,),
+            lambda p: set(p) == rooms,
+            lambda p: next_paths(p),
+            lambda a, b: path_dist(a, b),
+            lambda p: 0,
+            ret=ASTAR_GOAL,
+        )
+
+        cur, *path = path
+        while path:
+            nxt, *path = path
             yield nxt, self.go(cur, nxt)
             cur = nxt
 
