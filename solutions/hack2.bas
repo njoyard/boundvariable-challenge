@@ -1,24 +1,5 @@
-V        REM  +------------------------------------------------+
-X        REM  | HACK.BAS      (c) 19100   fr33 v4r14bl3z       |
-XV       REM  |                                                |
-XX       REM  | Brute-forces passwords on UM vIX.0 systems.    |
-XXV      REM  | Compile with Qvickbasic VII.0 or later:        |
-XXX      REM  |    /bin/qbasic hack.bas                        |
-XXXV     REM  | Then run:                                      |
-XL       REM  |   ./hack.exe username                          |
-XLV      REM  |                                                |
-L        REM  | This program is for educational purposes only! |
-LV       REM  +------------------------------------------------+
-LX       REM
-LXV      IF ARGS() > I THEN GOTO LXXXV
-LXX      PRINT "usage: ./hack.exe username"
-LXXV     PRINT CHR(X)
-LXXX     END
-LXXXV    REM
-XC       REM  get username from command line
 XCV      DIM username AS STRING
 C        username = ARG(II)
-CV       REM  common words used in passwords
 CX       DIM pwdcount AS INTEGER
 CXV      pwdcount = LIII
 CXX      DIM words(pwdcount) AS STRING
@@ -75,44 +56,26 @@ CCCLXX   words(L) = "xyzzy"
 CCCLXXV  words(LI) = "zephyr"
 CCCLXXX  words(LII) = "zeppelin"
 CCCLXXXV words(LIII) = "zxcvbnm"
-CCCXC    REM try each password
-CCCXCV   PRINT "attempting hack with " + pwdcount + " passwords " + CHR(X)
 CD       DIM i AS INTEGER
 CDV      i = I
-CDX      IF CHECKPASS(username, words(i)) THEN GOTO CDXXX
+CDX      IF CHECKPASS(username, words(i)) THEN GOTO CDXXXV
 CDXV     i = i + I
-CDXX     IF i > pwdcount THEN GOTO CDXLV
+CDXX     IF i > pwdcount THEN GOTO DV
 CDXXV    GOTO CDX
-CDXXX    PRINT "found match!! for user " + username + CHR(X)
 CDXXXV   PRINT "password: " + words(i) + CHR(X)
 CDXL     END
-CDXLV    PRINT "no simple matches for user " + username + CHR(X)
-CDL      REM
-CDLV     REM  the above code will probably crack passwords for many
-CDLX     REM  users so I always try it first. when it fails, I try the
-CDLXV    REM  more expensive method below.
-CDLXX    REM
-CDLXXV   REM  passwords often take the form
-CDLXXX   REM    dictwordDD
-CDLXXXV  REM  where DD is a two-digit decimal number. try these next:
-D        PRINT "trying words followed by digits 00..99" + CHR(X)
 DV       DIM j AS INTEGER
 DX       DIM k AS INTEGER
 DXV      i = I
-DXIX     PRINT "trying " + words(i) + " + 00..99" + CHR(X)
 DXX      j = I
 DXXV     k = I
-DXXIX    REM PRINT "trying " + words(i) + CHR(XLVII + j) + CHR(XLVII + k) + CHR(X)
-DXXX     IF CHECKPASS(username, words(i) + CHR(XLVII + j) + CHR(XLVII + k)) THEN GOTO DLXXX
+DXXX     IF CHECKPASS(username, words(i) + CHR(XLVII + j) + CHR(XLVII + k)) THEN GOTO DLXXXV
 DXXXV    k = k + I
 DXL      IF k > X THEN j = j + I
 DXLV     IF j > X THEN i = i + I
 DLX      IF i > pwdcount THEN GOTO DC
-DLXV     IF j > X THEN GOTO DXIX
+DLXV     IF j > X THEN GOTO DXX
 DLXX     IF k > X THEN GOTO DXXV
-DLXXV    GOTO DXXIX
-DLXXX    PRINT "found match!! for user " + username + CHR(X)
+DLXXV    GOTO DXXX
 DLXXXV   PRINT "password: " + words(i) + CHR(XLVII + j) + CHR(XLVII + k) + CHR(X)
 DC       END
-DCV      PRINT "no match found using word followed by digits 00..99" + CHR(X)
-DCX      GOTO DC
