@@ -1,6 +1,6 @@
 # Bound Variable challenge
 
-This is my implementation and solution of the [Bound Variable challenge](http://boundvariable.org/), written using python 3.13, with no requirements outside the standard library.
+This is my implementation and solution of the [Bound Variable challenge](http://boundvariable.org/), written using python 3.13, with no requirements outside the standard library. It is probably a lot slower than eg. a C implementation, but I don't know how I could have made it faster in Python.
 
 ## Running
 
@@ -32,17 +32,16 @@ The following commands are not very useful, they are still there anyway:
 
 > :warning: **major spoilers ahead** :warning:
 
-### QBASIC solver 'bas'
+### QVICKBASIC solver 'bas'
 
-This solver writes and compiles a QBASIC program (read from `solutions/hack2.bas`) to bruteforce user passwords from dictionary words and `<word>DD` where DD is 00..99. It lists users from home directories in /home, then runs the bruteforce program against each user, and finally outputs all passwords that were found to the terminal as well as into `solutions/hack2.out`.
+This solver writes and compiles a QVICKBASIC program (read from `solutions/hack2.bas`) to bruteforce user passwords from dictionary words and `<word>DD` where DD is 00..99. It lists users from home directories in /home, then runs the bruteforce program against each user, and finally outputs all passwords that were found to the terminal as well as into `solutions/hack2.out`. The QVICKBASIC program is derived from the incomplete one found in the existing UMIX filesystem, and pruned of comments and unneeded `PRINT`s to make execution faster.
 
 ### Adventure solver 'adv'
 
-This solver includes several solvers for `howie`'s adventure game.
+This solver (will) include several solvers for `howie`'s adventure game.
 
-`.slv adv keypad` can be used to automatically fix the keypad from the Junk Room, assuming an empty inventory. Commands are also written to `solutions/adventure-keypad` for reference.
+#### Item repair solvers
 
-`.slv adv chicago` can automatically fix the uploader and downloader from any place in the starting Chicago area (in the streets), assuming no items have been touched yet. In runs in two passes, and the game must be reset between the two, since the first pass is destructive.
+These solvers all explore the whole map to get all piles of items, then use a specific solving approach to generate commands to repair items.
 
-- In the first pass, it explores all places, lists all items and gets their state (missing parts) ; in order to pick all items, it incinerates a lot of them and the game will most likely be softlocked after that. The result of this pass is the knowledge of all stacks of items in all places, and their missing parts. This is saved to `solvers/chicago.pickle` ; if that file exists when starting the solver, it executes to the second pass instead.
-- In the second pass, after reloading the knowledge from the first pass if necessary, it determines a series of actions to fix the downloader and uploader, and executes them.
+`.slv adv astar ITEM [...ITEMS]` uses A-star in game state space to figure out a way to end up with fully repaired ITEMs in the inventory. All unneeded items not specified in the command are allowed to be incinerated. This works well for the keypad, but state space is way too big for the uploader/downloader to have it compute a solution in a reasonable time. Maybe it would work with a better heuristic, because currently it's just a Dijkstra equivalent.
