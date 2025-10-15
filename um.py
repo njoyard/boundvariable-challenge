@@ -243,10 +243,17 @@ class UM:
                     self.solver.print("done")
                     self.solver = None
                 else:
-                    self.solver.print(f"command: {cmd}")
+                    if "\n" in cmd:
+                        self.solver.print(f"commands: {', '.join(cmd.splitlines())}")
+                    else:
+                        self.solver.print(f"command: {cmd}")
                     self.add_input(cmd)
             else:
-                cmd = input()
+                try:
+                    cmd = input()
+                except EOFError:
+                    self.regs[c] = NUM_MASK
+                    return
 
                 if self.handle_command(cmd):
                     return
@@ -386,30 +393,32 @@ class UM:
             print(f"< saving state to {name}...")
 
             f.write(struct.pack(">3sB", b"umS", 3))
-
             with gzip.open(f, mode="wb") as zf:
-                # Save finger - 1 so we reexecute the input instruction when loading
-                zf.write(struct.pack(">2L", self.finger - 1, self.next_array))
-                zf.write(struct.pack(">8L", *self.regs))
-
-                zf.write(struct.pack(">L", len(self.arrays)))
+                zf.write(
+                    struct.pack(
+                        ">2L8LL",
+                        self.finger - 1,  # reexecute IN when loading
+                        self.next_array,
+                        *self.regs,
+                        len(self.arrays),
+                    )
+                )
 
                 total = len(self.arrays)
                 count = 0
                 for k, v in self.arrays.items():
-                    zf.write(struct.pack(">2L", k, len(v)))
-                    zf.write(struct.pack(f">{len(v)}L", *v))
+                    zf.write(struct.pack(f">2L{len(v)}L", k, len(v), *v))
                     count += 1
-
                     if count % 1000 == 0:
                         print(
                             f"{ERASE}< saving state to {name}...  {int(100 * count/total)}%"
                         )
 
-                zf.write(struct.pack(">L", len(self.last_output)))
                 zf.write(
                     struct.pack(
-                        f">{len(self.last_output)}s", self.last_output.encode("ascii")
+                        f">L{len(self.last_output)}s",
+                        len(self.last_output),
+                        self.last_output.encode("ascii"),
                     )
                 )
 
