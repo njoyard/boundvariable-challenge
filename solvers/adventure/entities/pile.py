@@ -24,3 +24,15 @@ class Pile(namedtuple("Pile", ["items"])):
             raise InvalidState("Pile is empty")
 
         return self.top, Pile(self.items[1:])
+
+    def without_trash(self, trash):
+        if self.empty:
+            raise InvalidState(f"Piloe is empty")
+
+        trashed = []
+        new_pile = self
+        while not new_pile.empty and new_pile.top in trash:
+            removed, new_pile = new_pile.without_first_item()
+            trashed.append(removed)
+
+        return trashed, new_pile

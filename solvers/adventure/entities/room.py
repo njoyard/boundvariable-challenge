@@ -24,11 +24,7 @@ class Room(namedtuple("Room", ["name", "pile"])):
         if self.pile.empty:
             raise InvalidState(f"Room {self.name} has no items")
 
-        trashed = []
-        new_pile = self.pile
-        while not new_pile.empty and new_pile.top in trash:
-            removed, new_pile = new_pile.without_first_item()
-            trashed.append(removed)
+        trashed, new_pile = self.pile.without_trash(trash)
 
         if not trashed:
             raise InvalidState(f"Room {self.name} has no trash on top of its pile")
