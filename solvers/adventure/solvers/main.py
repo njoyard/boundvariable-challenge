@@ -1,4 +1,4 @@
-from .astar import AstarSolver
+from .astarrepair import AstarRepairSolver
 
 
 class AdventureSolver:
@@ -18,7 +18,7 @@ class AdventureSolver:
                     print("solver needs a parameter")
                     return
                 case ["astar", *items]:
-                    self.solver = AstarSolver(self.print, items)
+                    self.solver = AstarRepairSolver(self.print, items)
                 case _:
                     print(f"no solver for: {output}")
                     return

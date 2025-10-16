@@ -44,4 +44,7 @@ This solver (will) include several solvers for `howie`'s adventure game.
 
 These solvers all explore the whole map to get all piles of items, then use a specific solving approach to generate commands to repair items.
 
-`.slv adv astar ITEM [...ITEMS]` uses A-star in game state space to figure out a way to end up with fully repaired ITEMs in the inventory. All unneeded items not specified in the command are allowed to be incinerated. This works well for the keypad, but state space is way too big for the uploader/downloader to have it compute a solution in a reasonable time. Maybe it would work with a better heuristic, because currently it's just a Dijkstra equivalent.
+`.slv adv astar ITEM [...ITEMS]` uses A-star in game state space to figure out a way to end up with fully repaired ITEMs in the inventory. All unneeded items not specified in the command are allowed to be incinerated. This works well for the keypad, but not for uploader/downloader (I'm still keeping that solver for... reasons):
+
+- requirements expansion is systematic (ANY item that fits a requirement is added), and some items have no available fix
+- in any case, state space is way too big for timely execution

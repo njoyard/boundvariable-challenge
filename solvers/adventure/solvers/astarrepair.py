@@ -4,10 +4,12 @@ from ...lib import astar, ASTAR_GOAL
 from .repair import BaseRepairSolver
 
 
-class AstarSolver(BaseRepairSolver):
+class AstarRepairSolver(BaseRepairSolver):
     """
     Solve repair task with A* state space search
     """
+
+    OUT_BASE = "solutions/adventure-astar-"
 
     def solve(self, initial, requirements):
         # Build list of all items as generic item -> [(actual item, location)...]
@@ -39,7 +41,7 @@ class AstarSolver(BaseRepairSolver):
             required.update(matching)
             frontier.update(r for m in matching for r in m.needed_to_become(item))
 
-        trash = [i.unpiled() for i in initial.all_items if i not in required]
+        trash = [i for i in initial.all_items if i not in required]
         ret = astar(
             initial,
             lambda s: s.inv.matches(requirements),

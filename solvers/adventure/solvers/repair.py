@@ -19,6 +19,8 @@ class BaseRepairSolver:
     that should return a list of commands.
     """
 
+    OUT_BASE = "solutions/adventure-"
+
     def __init__(self, printmsg, targets):
         self.print = printmsg
 
@@ -84,6 +86,12 @@ class BaseRepairSolver:
             if commands == None:
                 self.print("no solution found")
             else:
+                with open(
+                    self.OUT_BASE + "-".join(sorted(self.targets)), mode="w"
+                ) as f:
+                    f.write(f'# From "{self.room.name}"\n')
+                    f.write("\n".join(commands) + "\n")
+
                 return commands
 
         if self.state == ST_FINISHING:

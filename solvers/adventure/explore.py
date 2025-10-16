@@ -90,7 +90,7 @@ class MapExplorer:
             lambda p: set(p) == rooms,
             lambda p: next_paths(p),
             lambda a, b: path_dist(a, b),
-            lambda p: 0,
+            lambda p: len(rooms - set(p)),
             ret=ASTAR_GOAL,
         )
 

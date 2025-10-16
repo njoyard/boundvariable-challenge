@@ -4,7 +4,7 @@ from ..errors import Unfixable
 from .condition import Condition
 
 
-class Item(namedtuple("Item", ["name", "adj", "item_below", "condition"])):
+class Item(namedtuple("Item", ["name", "adj", "condition"])):
     __slots__ = ()
 
     def __repr__(self):
@@ -21,36 +21,16 @@ class Item(namedtuple("Item", ["name", "adj", "item_below", "condition"])):
     def full_name(self):
         return f"{self.adj} {self.name}" if self.adj else self.name
 
-    @property
-    def all_items(self):
-        return [self] + (self.item_below.all_items if self.item_below else [])
-
-    def find(self, item):
-        found = [self] if self.can_become(item) else []
-        if self.item_below:
-            found += self.item_below.find(item)
-        return found
-
-    def unpiled(self):
-        return Item(self.name, self.adj, None, self.condition)
-
     def as_generic(self):
-        return Item(self.name, "", None, self.condition)
+        return Item(self.name, "", self.condition)
 
     def as_pristine_generic(self):
-        return Item(self.name, "", None, Condition(False))
-
-    def without_first_item(self):
-        return (
-            self.unpiled(),
-            self.item_below,
-        )
+        return Item(self.name, "", Condition(False))
 
     def combined_with(self, other):
         return Item(
             self.name,
             self.adj,
-            self.item_below,
             self.condition.combined_with(other),
         )
 
